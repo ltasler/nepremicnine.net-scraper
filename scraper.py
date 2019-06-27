@@ -1,7 +1,11 @@
+#!/usr/bin/python
+
 from lxml import html
+from time import sleep
 import requests
 import json
 import re
+import smtplib, ssl
 
 
 class Scraper:
@@ -24,13 +28,13 @@ class Scraper:
         """
         visited = self._appdata["visited"]
         removed = []
-        for v, i in enumerate(visited):
-            url = v["url"]
+        for i, v in enumerate(visited):
+            url = v["link"]
             r = requests.get(url)
             if r.status_code == 404:
                 # Does not exist anymore. Remove and append for report.
                 removed.append(v)
-                del visited[i]  # TODO: Test that shit
+                del self._appdata['visited'][i]
         return removed
     
     def _does_offer_exists(self, offer_id):
@@ -44,15 +48,14 @@ class Scraper:
                 return True
         return False
     
-    def _get_page_number(self, url):
-        tmp = re.search(r"\/[0-9]\/", url).group(0)
+    @staticmethod
+    def _get_page_number(url):
+        tmp = re.search(r"/[0-9]/", url).group(0)
         return int(tmp[1:2])
-
     
     def _check_for_new(self):
         """
         Checks for new offers on url in appdata.
-        :param appdata:
         :return:
         """
         new_offers = []
