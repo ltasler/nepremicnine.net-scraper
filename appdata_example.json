@@ -1,6 +1,16 @@
 {
   "baseUrl": "https://www.nepremicnine.net",
   "url": "https://www.nepremicnine.net/oglasi-oddaja/ljubljana-mesto/stanovanje/1.5-sobno,2-sobno,2.5-sobno,3-sobno,3.5-sobno/cena-do-600-eur-na-mesec/1/?s=3",
+  "smtp": {
+    "port": 465,
+    "server": "smtp.gmail.com",
+    "user": "user@gmail.com",
+    "password": "password"
+  },
+  "mailRecipients": [
+    "recipient@protonmail.com",
+    "mojster@gmail.com"
+  ],
   "visited": [
   ]
 }

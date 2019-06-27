@@ -5,7 +5,10 @@ from time import sleep
 import requests
 import json
 import re
-import smtplib, ssl
+import smtplib
+import ssl
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 
 class Scraper:
@@ -101,12 +104,59 @@ class Scraper:
             
             # na koncu se "gremo na naslednjo stran"
             page_number = page_number + 1
-            url = re.sub(r"\/[0-9]\/", f"/{page_number}/", url)
-        #End of while
+            url = re.sub(r"/[0-9]/", f"/{page_number}/", url)
+            
+            # Spimo 2 sekundi, da slucaaaaaaaaaaaajno ne bomo dos-al
+            sleep(2)
+            
+        # End of while
         return new_offers
     # End of _check_for_new
     
-    def send_mail(self):
+    @staticmethod
+    def _get_item_text_message(n):
+        message_text = f'{n["title"]}\n{n["link"]}\n{n["desc"]}\nTip: {n["type"]}\n'
+        message_text += f'Velikost:{n["size"]}\nCena: {n["price"]}\nAgencija: {n["agency"]}\n\n'
+        return message_text
+    
+    def send_mail(self, new, removed):
+        if len(new) == 0 and len(removed == 0):
+            # Ce ni nic novega ne posiljaj..
+            return False
+        
+        smtp = self._appdata["smtp"]
+        port = smtp["port"]
+        user = smtp["user"]
+        password = smtp["password"]
+        smtp_server = smtp["server"]
+        
+        message = MIMEMultipart("alternative")
+        message["Subject"] = "Spremembe na nepremicnine.net"
+        message["From"] = user
+        message["To"] = ','.join(self._appdata["mailRecipients"])
+        
+        message_text = "Pozdravljen/a,\n\nPrinasam novice iz nepremicnine.net.\n\n\n"
+        if len(new) > 0:
+            message_text += "Novi oglasi na nepremicnine.net:\n\n"
+            for n in new:
+                message_text += self._get_item_text_message(n)
+            message_text += "-------------------------------------------------------------------------\n\n"
+        if len(removed) > 0:
+            message_text += "Odstranjeni oglasi na nepremicnine.net\n\n"
+            for r in removed:
+                message_text += self._get_item_text_message(r)
+            message_text += "-------------------------------------------------------------------------\n\n"
+        
+        message_text += "Lep Pozdrav,\nMr. robotek."
+        
+        part1 = MIMEText(message_text, "plain")
+        # TODO: Do the html MIME
+        message.attach(part1)
+        
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
+            server.login(user, password)
+            server.sendmail(user, message["To"], message.as_string())
         return True
     
     def run(self):
@@ -114,7 +164,7 @@ class Scraper:
         new = self._check_for_new()
 
         # poslji mail
-        success = self.send_mail()
+        success = self.send_mail(new, removed)
         
         # Prejsni funkciji niso cisti, spreminjajo appdata, ki ga bomo sedaj zapisali nazaj za prihodnja izvajanja
         if success:
