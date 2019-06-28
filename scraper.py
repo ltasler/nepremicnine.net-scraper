@@ -120,7 +120,7 @@ class Scraper:
         return message_text
     
     def send_mail(self, new, removed):
-        if len(new) == 0 and len(removed == 0):
+        if len(new) == 0 and len(removed) == 0:
             # Ce ni nic novega ne posiljaj..
             return False
         
