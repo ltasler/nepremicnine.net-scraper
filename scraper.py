@@ -133,7 +133,7 @@ class Scraper:
         message = MIMEMultipart("alternative")
         message["Subject"] = "Spremembe na nepremicnine.net"
         message["From"] = user
-        message["To"] = ','.join(self._appdata["mailRecipients"])
+        message["To"] = ', '.join(self._appdata["mailRecipients"])
         
         message_text = "Pozdravljen/a,\n\nPrinasam novice iz nepremicnine.net.\n\n\n"
         if len(new) > 0:
@@ -156,7 +156,7 @@ class Scraper:
         context = ssl.create_default_context()
         with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
             server.login(user, password)
-            server.sendmail(user, message["To"], message.as_string())
+            server.sendmail(user, self._appdata["mailRecipients"], message.as_string())
         return True
     
     def run(self):
