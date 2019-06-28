@@ -31,3 +31,4 @@ Vsa podana polja so obvezna:
 5. Zaženi program s ukazom `python scraper.py`.
 6. Za bolj avtomatizirano uporabo, se lahko uporabi task scheduler na windowsih oz. crontab na unix sistemih. 
 Interval zagona se lahko nastavi po želji.
+
