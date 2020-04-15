@@ -1,8 +1,10 @@
 #!/usr/bin/python
 
+import sys
 from lxml import html
 from time import sleep
 import requests
+import argparse
 import json
 import re
 import smtplib
@@ -56,13 +58,12 @@ class Scraper:
         tmp = re.search(r"/[0-9]/", url).group(0)
         return int(tmp[1:2])
     
-    def _check_for_new(self):
+    def _check_for_new(self, url):
         """
         Checks for new offers on url in appdata.
         :return:
         """
         new_offers = []
-        url = self._appdata["url"]
         page_number = self._get_page_number(url)
         while True:             # Fake do while
             page = requests.get(url)
@@ -70,7 +71,7 @@ class Scraper:
             offers = page_tree.xpath('//div[@class="seznam"]/div[@itemprop="itemListElement"]')
             
             if len(offers) == 0:
-                # Koncni pogoj ya while loop. nimamo vec ponudb
+                # Koncni pogoj za while loop. Nimamo vec ponudb
                 break
             
             for offer in offers:
@@ -159,27 +160,54 @@ class Scraper:
             server.sendmail(user, self._appdata["mailRecipients"], message.as_string())
         return True
     
-    def run(self):
+    def run(self, nomail):
         removed = self._check_for_removed()
-        new = self._check_for_new()
+        new = []
+        for url in self._appdata["urls"]:
+            print("Checking URL: " + url)
+            new.extend(self._check_for_new(url))
 
-        # poslji mail
-        success = self.send_mail(new, removed)
+        print("new: " + new.__len__().__str__())
+
+        success = True
+        if not nomail:
+            # poslji mail
+            success = self.send_mail(new, removed)
         
         # Prejsni funkciji niso cisti, spreminjajo appdata, ki ga bomo sedaj zapisali nazaj za prihodnja izvajanja
         if success:
             # Spreminjaj samo ce je bilo uspesno posiljanje
             with open(self._appdata_file, 'w') as f:
                 json.dump(self._appdata, f, indent=2)
+
+    def purge(self):
+
+        self._appdata["visited"].clear()
+
+        with open(self._appdata_file, 'w') as f:
+            json.dump(self._appdata, f, indent=2)
+
+        print("Visited list purged")
+
         
         
 APPDATA_FILE = "appdata.json"
 
 
-def main():
+def main(argv):
+    # Construct the argument parser
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--purge', action='store_true', help="Purges the visited database in the appdata.json")
+    ap.add_argument('--nomail', action='store_true', help="Doesn't send the email, just saves the visited to appdata.json")
+    args = ap.parse_args(argv)
+
     scraper = Scraper(APPDATA_FILE)
-    scraper.run()
+    if args.purge:
+        scraper.purge()
+    else:
+        scraper.run(args.nomail)
     
 
 if __name__ == '__main__':
-    main()
+    sys.path.extend(['.', '..'])
+    main(sys.argv[1:])
