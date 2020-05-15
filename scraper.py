@@ -5,7 +5,8 @@ from lxml import html
 from time import sleep
 import requests
 import argparse
-import json
+import json as jsonOld
+import ujson as json
 import re
 import smtplib
 import ssl
@@ -19,18 +20,21 @@ class Scraper:
     _appdata_file = ''
     
     def __init__(self, appdata_file):
+        print("Opening appdata file: " + appdata_file)
         with open(appdata_file, "r") as file:
             appdata = json.load(file)
         if not appdata:
             raise FileNotFoundError(f"Could not load {appdata_file}.")
         self._appdata = appdata
         self._appdata_file = appdata_file
+        print("appdata file open")
     
     def _check_for_removed(self):
         """
         Checks for removed urls.
         :return: return array of links to removed ones.
         """
+        print("Checking for removed links...")
         visited = self._appdata["visited"]
         removed = []
         for i, v in enumerate(visited):
@@ -40,6 +44,7 @@ class Scraper:
                 # Does not exist anymore. Remove and append for report.
                 removed.append(v)
                 del self._appdata['visited'][i]
+        print("Removed " + removed.__len__().__str__())
         return removed
     
     def _does_offer_exists(self, offer_id):
@@ -66,6 +71,8 @@ class Scraper:
         new_offers = []
         page_number = self._get_page_number(url)
         while True:             # Fake do while
+            # print("Checking page " + page_number.__str__() + " url: " + url)
+            print("Checking page " + page_number.__str__())
             page = requests.get(url)
             page_tree = html.fromstring(page.content)
             offers = page_tree.xpath('//div[@class="seznam"]/div[@itemprop="itemListElement"]')
@@ -105,7 +112,8 @@ class Scraper:
             
             # na koncu se "gremo na naslednjo stran"
             page_number = page_number + 1
-            url = re.sub(r"/[0-9]/", f"/{page_number}/", url)
+            url = re.sub(r"/([0-9]|[1-9][0-9]|[1-9][0-9][0-9])/", f"/{page_number}/", url)
+
             
             # Spimo 2 sekundi, da slucaaaaaaaaaaaajno ne bomo dos-al
             sleep(2)
@@ -124,7 +132,7 @@ class Scraper:
         if len(new) == 0 and len(removed) == 0:
             # Ce ni nic novega ne posiljaj..
             return False
-        
+        print("Sending mail...")
         smtp = self._appdata["smtp"]
         port = smtp["port"]
         user = smtp["user"]
@@ -165,9 +173,11 @@ class Scraper:
         new = []
         for url in self._appdata["urls"]:
             print("Checking URL: " + url)
-            new.extend(self._check_for_new(url))
+            found = self._check_for_new(url)
+            print("New found: " + found.__len__().__str__())
+            new.extend(found)
 
-        print("new: " + new.__len__().__str__())
+        print("New combined: " + new.__len__().__str__())
 
         success = True
         if not nomail:
@@ -176,6 +186,7 @@ class Scraper:
         
         # Prejsni funkciji niso cisti, spreminjajo appdata, ki ga bomo sedaj zapisali nazaj za prihodnja izvajanja
         if success:
+            print("Writing appdata file")
             # Spreminjaj samo ce je bilo uspesno posiljanje
             with open(self._appdata_file, 'w') as f:
                 json.dump(self._appdata, f, indent=2)

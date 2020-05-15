@@ -10,7 +10,7 @@ spremebe, se lahko varno nastavi na interval recimo 5 minut brez da bi pospamal 
 
 ## Namestitev in uporaba
 1. Inštalirati python. Testirano na verziji 3.7.2.
-2. (opcijsko) Priporočljivo je narediti virtualni enviroment. Več o tem na https://docs.python-guide.org/dev/virtualenvs/
+2. (opcijsko) Priporočljivo je narediti virtualni enviroment. Več o tem na https://docs.python-guide.org/dev/virtualenvs/, oz za MacOs: https://opensource.com/article/19/5/python-3-default-mac
 3. Inštalirati requirements. To lahko storite z naslednjim ukazom: `pip install -r requirements.txt`
 4. Kreirati file `appdata.json`. Ta file mora izgledati tako, kot je priložen primer `appdata_example.json`.
 Vsa podana polja so obvezna:
