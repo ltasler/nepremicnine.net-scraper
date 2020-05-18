@@ -3,6 +3,7 @@
 import sys
 from lxml import html
 from time import sleep
+from datetime import datetime
 import requests
 import argparse
 import json as jsonOld
@@ -20,6 +21,8 @@ class Scraper:
     _appdata_file = ''
     
     def __init__(self, appdata_file):
+        timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        print("=============== Scraper started at " + timestamp + " ===============")
         print("Opening appdata file: " + appdata_file)
         with open(appdata_file, "r") as file:
             appdata = json.load(file)
@@ -27,7 +30,7 @@ class Scraper:
             raise FileNotFoundError(f"Could not load {appdata_file}.")
         self._appdata = appdata
         self._appdata_file = appdata_file
-        print("appdata file open")
+        # print("appdata file open")
     
     def _check_for_removed(self):
         """
@@ -72,7 +75,7 @@ class Scraper:
         page_number = self._get_page_number(url)
         while True:             # Fake do while
             # print("Checking page " + page_number.__str__() + " url: " + url)
-            print("Checking page " + page_number.__str__())
+            # print("Checking page " + page_number.__str__())
             page = requests.get(url)
             page_tree = html.fromstring(page.content)
             offers = page_tree.xpath('//div[@class="seznam"]/div[@itemprop="itemListElement"]')
