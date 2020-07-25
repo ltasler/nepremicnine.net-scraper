@@ -1,9 +1,13 @@
 #!/usr/bin/python
 
+import sys
 from lxml import html
 from time import sleep
+from datetime import datetime
 import requests
-import json
+import argparse
+import json as jsonOld
+import ujson as json
 import re
 import smtplib
 import ssl
@@ -17,18 +21,23 @@ class Scraper:
     _appdata_file = ''
     
     def __init__(self, appdata_file):
+        timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        print("=============== Scraper started at " + timestamp + " ===============")
+        print("Opening appdata file: " + appdata_file)
         with open(appdata_file, "r") as file:
             appdata = json.load(file)
         if not appdata:
             raise FileNotFoundError(f"Could not load {appdata_file}.")
         self._appdata = appdata
         self._appdata_file = appdata_file
+        # print("appdata file open")
     
     def _check_for_removed(self):
         """
         Checks for removed urls.
         :return: return array of links to removed ones.
         """
+        print("Checking for removed links...")
         visited = self._appdata["visited"]
         removed = []
         for i, v in enumerate(visited):
@@ -38,6 +47,7 @@ class Scraper:
                 # Does not exist anymore. Remove and append for report.
                 removed.append(v)
                 del self._appdata['visited'][i]
+        print("Removed " + removed.__len__().__str__())
         return removed
     
     def _does_offer_exists(self, offer_id):
@@ -56,21 +66,22 @@ class Scraper:
         tmp = re.search(r"/[0-9]/", url).group(0)
         return int(tmp[1:2])
     
-    def _check_for_new(self):
+    def _check_for_new(self, url):
         """
         Checks for new offers on url in appdata.
         :return:
         """
         new_offers = []
-        url = self._appdata["url"]
         page_number = self._get_page_number(url)
         while True:             # Fake do while
+            # print("Checking page " + page_number.__str__() + " url: " + url)
+            # print("Checking page " + page_number.__str__())
             page = requests.get(url)
             page_tree = html.fromstring(page.content)
             offers = page_tree.xpath('//div[@class="seznam"]/div[@itemprop="itemListElement"]')
             
             if len(offers) == 0:
-                # Koncni pogoj ya while loop. nimamo vec ponudb
+                # Koncni pogoj za while loop. Nimamo vec ponudb
                 break
             
             for offer in offers:
@@ -104,7 +115,8 @@ class Scraper:
             
             # na koncu se "gremo na naslednjo stran"
             page_number = page_number + 1
-            url = re.sub(r"/[0-9]/", f"/{page_number}/", url)
+            url = re.sub(r"/([0-9]|[1-9][0-9]|[1-9][0-9][0-9])/", f"/{page_number}/", url)
+
             
             # Spimo 2 sekundi, da slucaaaaaaaaaaaajno ne bomo dos-al
             sleep(2)
@@ -123,7 +135,7 @@ class Scraper:
         if len(new) == 0 and len(removed) == 0:
             # Ce ni nic novega ne posiljaj..
             return False
-        
+        print("Sending mail...")
         smtp = self._appdata["smtp"]
         port = smtp["port"]
         user = smtp["user"]
@@ -159,27 +171,57 @@ class Scraper:
             server.sendmail(user, self._appdata["mailRecipients"], message.as_string())
         return True
     
-    def run(self):
+    def run(self, nomail):
         removed = self._check_for_removed()
-        new = self._check_for_new()
+        new = []
+        for url in self._appdata["urls"]:
+            print("Checking URL: " + url)
+            found = self._check_for_new(url)
+            print("New found: " + found.__len__().__str__())
+            new.extend(found)
 
-        # poslji mail
-        success = self.send_mail(new, removed)
+        print("New combined: " + new.__len__().__str__())
+
+        success = True
+        if not nomail:
+            # poslji mail
+            success = self.send_mail(new, removed)
         
         # Prejsni funkciji niso cisti, spreminjajo appdata, ki ga bomo sedaj zapisali nazaj za prihodnja izvajanja
         if success:
+            print("Writing appdata file")
             # Spreminjaj samo ce je bilo uspesno posiljanje
             with open(self._appdata_file, 'w') as f:
                 json.dump(self._appdata, f, indent=2)
+
+    def purge(self):
+
+        self._appdata["visited"].clear()
+
+        with open(self._appdata_file, 'w') as f:
+            json.dump(self._appdata, f, indent=2)
+
+        print("Visited list purged")
+
         
         
 APPDATA_FILE = "appdata.json"
 
 
-def main():
+def main(argv):
+    # Construct the argument parser
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--purge', action='store_true', help="Purges the visited database in the appdata.json")
+    ap.add_argument('--nomail', action='store_true', help="Doesn't send the email, just saves the visited to appdata.json")
+    args = ap.parse_args(argv)
+
     scraper = Scraper(APPDATA_FILE)
-    scraper.run()
+    if args.purge:
+        scraper.purge()
+    else:
+        scraper.run(args.nomail)
     
 
 if __name__ == '__main__':
-    main()
+    sys.path.extend(['.', '..'])
+    main(sys.argv[1:])
