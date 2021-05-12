@@ -127,7 +127,8 @@ class Scraper:
     
     @staticmethod
     def _get_item_text_message(n):
-        message_text = f'{n["title"]}\n{n["link"]}\n{n["desc"]}\nTip: {n["type"]}\n'
+        # Presledek po linku poskrbi, da mail klient pomotoma ne vkljuci zacetek opisa v URL
+        message_text = f'{n["title"]}\n{n["link"]} \n{n["desc"]}\nTip: {n["type"]}\n'
         message_text += f'Velikost:{n["size"]}\nCena: {n["price"]}\nAgencija: {n["agency"]}\n\n'
         return message_text
     
